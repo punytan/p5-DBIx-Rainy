@@ -3,6 +3,11 @@ name 'DBIx-Rainy';
 all_from 'lib/DBIx/Rainy.pm';
 
 # requires '';
+requires 'DBIx::Connector';
+requires 'DBIx::DBHResolver';
+requires 'DBIx::Rainy::Query';
+requires 'SQL::Maker';
+test_requires 'Test::mysqld';
 
 tests 't/*.t';
 author_tests 'xt';
