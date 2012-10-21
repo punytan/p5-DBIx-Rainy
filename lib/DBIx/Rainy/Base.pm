@@ -4,6 +4,10 @@ use warnings;
 
 use DBIx::Connector;
 use DBIx::DBHResolver;
+use DBIx::Rainy::Query;
+
+use SQL::Maker;
+SQL::Maker->load_plugin('InsertMulti');
 
 our $ConfigClass = "";
 
@@ -14,6 +18,8 @@ our $DBI_CONNECT_CACHED_METHOD = 'new';
 $DBIx::DBHResolver::DBI = $DBI;
 $DBIx::DBHResolver::DBI_CONNECT_METHOD = $DBI_CONNECT_METHOD;
 $DBIx::DBHResolver::DBI_CONNECT_CACHED_METHOD =  $DBI_CONNECT_CACHED_METHOD;
+
+my %instances;
 
 sub config_class {
     @_ == 2 ? $ConfigClass = $_[1] : $ConfigClass;
@@ -33,12 +39,40 @@ sub new {
     my $resolver = DBIx::DBHResolver->new;
     $resolver->config($resolver_conf);
 
-    return bless { resolver => $resolver }, $class;
+    my $driver = $args{sql_driver} || 'mysql';
+    my $maker = SQL::Maker->new(driver => $driver);
+
+    return bless {
+        sql => $maker,
+        resolver => $resolver,
+    }, $class;
 }
 
 sub connect { shift->{resolver}->connect(@_) }
 
 sub resolver { shift->{resolver} }
+
+sub sql { shift->{sql} }
+
+sub query {
+    my $self = shift;
+
+    DBIx::Rainy::Query->new(
+        conn => $self->connect(@_),
+        sql  => $self->sql,
+    );
+}
+
+sub register {
+    my ($self, $class, @args) = @_;
+
+    unless (exists $instances{$class}) {
+        _require($class);
+        $instances{$class} = $class->new(@args);
+    }
+
+    return $instances{$class};
+}
 
 sub _require {
     my $class = shift;
